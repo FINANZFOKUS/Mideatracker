@@ -10,11 +10,9 @@ from __future__ import annotations
 
 import logging
 
-from bs4 import BeautifulSoup
-
 from ..config import Config
 from ..models import CHANNEL_ONLINE, CONDITION_NEW, Offer
-from .base import fetch_html_via_browser, http_get, parse_price
+from .base import fetch_html_via_browser, http_get
 from .jsonld import extract_products
 
 log = logging.getLogger(__name__)
@@ -41,9 +39,11 @@ def fetch_offers(cfg: Config) -> list[Offer]:
         return []
 
     offers: list[Offer] = []
-    product_ean = cfg.product.eans[0] if cfg.product.eans else None
 
-    # 1) Strukturierte Daten (Preis/Verfügbarkeit/Titel).
+    # Nur strukturierte Daten (Titel/EAN/Preis/Verfügbarkeit). Wir stempeln
+    # bewusst NICHT unser Produkt auf unbekannte Zeilen – sonst könnte die
+    # (teurere) Comfee-Variante einen Pseudo-Treffer erzeugen. Der strikte
+    # Produkt-/Preisfilter (matching.is_buyable) entscheidet anschließend.
     for prod in extract_products(html):
         if prod["price"] is None:
             continue
@@ -56,30 +56,8 @@ def fetch_offers(cfg: Config) -> list[Offer]:
                 in_stock=prod["in_stock"],
                 condition=CONDITION_NEW,
                 channel=CHANNEL_ONLINE,
-                ean=prod["ean"] or product_ean,
+                ean=prod["ean"],  # kein Fallback-Stempel → Titel-Ausschluss greift
                 merchant="Geizhals (Bestpreis)",
-            )
-        )
-
-    # 2) Händler-Angebotszeilen (best effort – Selektoren ggf. nachzuziehen).
-    soup = BeautifulSoup(html, "html.parser")
-    for row in soup.select("div.offer__price, .productlist__price, [class*='price']"):
-        price = parse_price(row.get_text(" ", strip=True))
-        if price is None:
-            continue
-        merchant_el = row.find_parent().select_one("[class*='merchant'], [class*='shop']")
-        merchant = merchant_el.get_text(strip=True) if merchant_el else "Geizhals-Händler"
-        offers.append(
-            Offer(
-                source=SOURCE,
-                title=cfg.product.name,
-                price=price,
-                url=url,
-                in_stock=True,  # gelistete Händlerangebote gelten als bestellbar
-                condition=CONDITION_NEW,
-                channel=CHANNEL_ONLINE,
-                ean=product_ean,
-                merchant=merchant[:60],
             )
         )
 

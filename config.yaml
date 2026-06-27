@@ -26,7 +26,7 @@ location:
 
 # Quellen ein-/ausschalten. Schlüssel entsprechen den Adapter-Namen.
 sources:
-  geizhals: false  # kein eigener Listeneintrag fürs richtige Gerät gefunden (nur Comfee)
+  geizhals: true  # Achtung: hinterlegte URL ist die Comfee-Variante (s.u.)
   idealo: true
   mediamarkt: true
   saturn: true
@@ -37,7 +37,7 @@ sources:
 
 # Pro Quelle die direkte Produkt-URL. Leere Werte werden übersprungen.
 source_urls:
-  geizhals: ""
+  geizhals: "https://geizhals.de/midea-comfee-porta-split-a3201826.html?hloc=de&hloc=at"
   idealo: "https://www.idealo.de/preisvergleich/OffersOfProduct/204374464.html"
   mediamarkt: "https://www.mediamarkt.de/de/product/_midea-porta-split-klimaanlage-grau-max-raumgrosse-42-m-eek-a-142245268.html"
   saturn: "https://www.saturn.de/de/product/_midea-porta-split-klimaanlage-grau-max-raumgrosse-42-m-eek-a-142245268.html"
