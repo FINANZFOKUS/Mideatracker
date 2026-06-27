@@ -116,6 +116,7 @@ def extract_products(html: str) -> list[dict]:
                         "price": price,
                         "currency": off.get("priceCurrency") or "EUR",
                         "in_stock": _availability_in_stock(off.get("availability")),
+                        "availability_raw": off.get("availability"),
                     }
                 )
 
