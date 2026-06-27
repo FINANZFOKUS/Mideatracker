@@ -17,6 +17,7 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 8  # Sicherheitsnetz: bricht ab, falls ein Shop hängt
     steps:
       - uses: actions/checkout@v4
 

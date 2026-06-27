@@ -19,7 +19,10 @@ _USER_AGENTS = [
     "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
 ]
 
-DEFAULT_TIMEOUT = 25
+# Zeitbudgets bewusst knapp, damit ein 10-Minuten-Lauf nicht überzogen wird.
+DEFAULT_TIMEOUT = 15  # Sekunden pro HTTP-Request
+BROWSER_GOTO_MS = 15000  # Seitenaufbau im Browser-Fallback
+BROWSER_SELECTOR_MS = 6000  # Warten auf Selektor (kurz – fehlt er, geht's ohne)
 
 
 def browser_headers(extra: dict | None = None) -> dict:
@@ -48,10 +51,14 @@ def http_get(
     session: requests.Session | None = None,
     headers: dict | None = None,
     params: dict | None = None,
-    retries: int = 3,
+    retries: int = 2,
     timeout: int = DEFAULT_TIMEOUT,
 ) -> requests.Response | None:
-    """GET mit Retry/Backoff. Gibt None zurück, wenn dauerhaft fehlschlägt."""
+    """GET mit Retry/Backoff. Gibt None zurück, wenn dauerhaft fehlschlägt.
+
+    Bei dauerhaftem Block (403/404/451) wird nicht weiter wiederholt – ein
+    erneuter Versuch ändert daran nichts und kostet nur Zeit.
+    """
     sess = session or get_session()
     for attempt in range(retries):
         try:
@@ -59,9 +66,12 @@ def http_get(
             if resp.status_code == 200:
                 return resp
             log.warning("GET %s -> HTTP %s (Versuch %d)", url, resp.status_code, attempt + 1)
+            if resp.status_code in (403, 404, 451):
+                break  # Block/„nicht da“ – Retry zwecklos, direkt zum Fallback
         except requests.RequestException as exc:
             log.warning("GET %s fehlgeschlagen: %s (Versuch %d)", url, exc, attempt + 1)
-        time.sleep(2 ** attempt + random.random())
+        if attempt < retries - 1:
+            time.sleep(min(2 ** attempt + random.random(), 3))
     return None
 
 
@@ -76,11 +86,17 @@ def http_get_json(url: str, **kwargs) -> dict | list | None:
         return None
 
 
-def fetch_html_via_browser(url: str, *, wait_selector: str | None = None, timeout_ms: int = 30000) -> str | None:
+def fetch_html_via_browser(
+    url: str,
+    *,
+    wait_selector: str | None = None,
+    timeout_ms: int = BROWSER_GOTO_MS,
+) -> str | None:
     """Fallback für bot-feindliche Seiten: echte Browser-Session via Playwright.
 
     Nutzt – falls vorhanden – den in CI vorinstallierten Chromium. Schlägt der
     Import oder Start fehl, wird None zurückgegeben (Adapter überspringt dann).
+    Die Timeouts sind knapp gehalten, damit der Gesamtlauf zügig bleibt.
     """
     try:
         from playwright.sync_api import sync_playwright
@@ -90,16 +106,23 @@ def fetch_html_via_browser(url: str, *, wait_selector: str | None = None, timeou
 
     try:
         with sync_playwright() as pw:
-            browser = pw.chromium.launch(headless=True)
+            browser = pw.chromium.launch(
+                headless=True,
+                args=["--no-sandbox", "--disable-dev-shm-usage"],
+            )
             ctx = browser.new_context(
                 user_agent=random.choice(_USER_AGENTS),
                 locale="de-DE",
             )
             page = ctx.new_page()
-            page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
+            page.set_default_timeout(BROWSER_SELECTOR_MS)
+            try:
+                page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
+            except Exception:  # noqa: BLE001 - langsame/blockierende Seite
+                pass
             if wait_selector:
                 try:
-                    page.wait_for_selector(wait_selector, timeout=timeout_ms)
+                    page.wait_for_selector(wait_selector, timeout=BROWSER_SELECTOR_MS)
                 except Exception:  # noqa: BLE001 - Selektor optional
                     pass
             html = page.content()
