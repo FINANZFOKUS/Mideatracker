@@ -21,13 +21,29 @@ GitHub Actions (alle 10 Min)
 
 ### Filter „nur wirklich bestellbar"
 Ein Angebot alarmiert nur, wenn **alle** Bedingungen erfüllt sind
-(`tracker/matching.py`):
+(`tracker/matching.py` + `tracker/sources/buyability.py`):
 1. **Richtiges Produkt** – EAN `4048164116478` (oder strikter Titelabgleich,
    schließt die teure Alt-Variante „Comfee" aus).
-2. **Tatsächlich auf Lager** – echter Liefer-/Filialstatus, kein bloßes Listing.
+2. **Wirklich online bestellbar** – strenge Prüfung: nur strukturiertes
+   schema.org `InStock`/`OnlineOnly` zählt. `InStoreOnly` (nur im Markt
+   vorrätig) zählt **nicht**; negative Marker („ausverkauft", „nur im Markt",
+   „nicht verfügbar") sind ein Veto; generische Seitentexte wie „in den
+   Warenkorb" gelten **nicht** als Beweis. Lieber ein Deal verpasst als ein
+   Pseudo-Alarm (nächster Check in 10 Min).
 3. **Preis ≤ 800 €**.
 4. **Zustand** – neu immer; gebraucht (Amazon Warehouse) nur weil `allow_used: true`.
 5. **Filialen** – nur innerhalb von 25 km.
+
+### Shop-Abdeckung (Stand der Live-Tests)
+| Shop | Status |
+|---|---|
+| **OBI** | ✅ direkt erreichbar, sauberes schema.org → meldet bei echter Online-Verfügbarkeit |
+| **Saturn** | ⚠️ erreichbar, aktuell „ausverkauft" → wird gemeldet sobald wieder bestellbar |
+| **MediaMarkt / Bauhaus** | ⚠️ erreichbar, aber SPA ohne schema.org → braucht Parsing der eingebetteten JSON-Daten (Ausbau) |
+| **Idealo / Hornbach / Amazon** | ❌ serverseitig hart geblockt (Bot-Wall, Mini-HTML) – aktuell ohne zuverlässige Daten |
+
+Diagnose jederzeit per Workflow **„Diagnose Shops"** (`inspect.yml`), Funktionstest
+der Push per **„Test-Alarm senden"** (`test-notify.yml`).
 
 ## Einrichtung (einmalig)
 
