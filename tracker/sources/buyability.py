@@ -61,13 +61,20 @@ ADD_TO_CART_SELECTORS = (
 
 
 def assess_buyability(html: str, *, jsonld_in_stock: bool) -> tuple[bool, dict]:
-    """Bewertet, ob ein Artikel WIRKLICH bestellbar ist.
+    """Bewertet KONSERVATIV, ob ein Artikel WIRKLICH online bestellbar ist.
+
+    Grundsatz: Pseudo-Treffer um jeden Preis vermeiden. Generische Texte wie
+    "in den Warenkorb" oder "versandkostenfrei" stehen auf JEDER Produktseite
+    und sind daher KEIN Beweis. Vertraut wird nur dem strukturierten
+    schema.org-Signal (InStock/OnlineOnly – NICHT InStoreOnly), und ein
+    negativer Marker hebt das wieder auf.
 
     Logik:
-      * Negativer Marker im Text  → nicht bestellbar (stärkstes Signal).
-      * Sonst bestellbar, wenn Warenkorb-Button ODER positiver Marker ODER
-        (strukturiertes InStock UND kein gegenteiliges Signal).
-    Returns (buyable, signals) – signals dient der Diagnose.
+      * Negativer Marker ("ausverkauft", "nicht verfügbar", "nur im Markt" …)
+        → nicht bestellbar (Veto, stärkstes Signal).
+      * Sonst bestellbar genau dann, wenn das strukturierte InStock-Signal da ist.
+      * Generische positive Marker / Warenkorb-Button dienen nur der Diagnose.
+    Returns (buyable, signals).
     """
     soup = BeautifulSoup(html, "html.parser")
     text = soup.get_text(" ", strip=True).lower()
@@ -77,14 +84,7 @@ def assess_buyability(html: str, *, jsonld_in_stock: bool) -> tuple[bool, dict]:
     found_positive = [m for m in POSITIVE_MARKERS if m in text]
     has_cart = any(soup.select(sel) for sel in ADD_TO_CART_SELECTORS)
 
-    if found_negative:
-        buyable = False
-    elif has_cart or found_positive:
-        buyable = True
-    else:
-        # Kein eindeutiges Seitensignal: nur dem strukturierten InStock trauen,
-        # wenn es vorhanden ist – sonst konservativ ablehnen.
-        buyable = bool(jsonld_in_stock)
+    buyable = bool(jsonld_in_stock) and not found_negative
 
     signals = {
         "jsonld_in_stock": jsonld_in_stock,

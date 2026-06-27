@@ -14,6 +14,7 @@ import logging
 from ..config import Config
 from ..models import CHANNEL_ONLINE, CONDITION_NEW, Offer
 from .base import fetch_html_via_browser, http_get
+from .buyability import assess_buyability
 from .jsonld import extract_products
 
 log = logging.getLogger(__name__)
@@ -46,13 +47,20 @@ def fetch_offers(cfg: Config, chain: str = "obi") -> list[Offer]:
     for prod in extract_products(html):
         if prod["price"] is None:
             continue
+        # Strikte Kaufbarkeit: strukturiertes InStock (kein InStoreOnly) UND
+        # kein negativer Marker auf der Seite.
+        buyable, signals = assess_buyability(html, jsonld_in_stock=prod["in_stock"])
+        log.info(
+            "%s: availability=%s -> bestellbar=%s %s",
+            chain, prod.get("availability_raw"), buyable, signals,
+        )
         offers.append(
             Offer(
                 source=chain,
                 title=prod["title"] or cfg.product.name,
                 price=prod["price"],
                 url=url,
-                in_stock=prod["in_stock"],
+                in_stock=buyable,
                 condition=CONDITION_NEW,
                 channel=CHANNEL_ONLINE,
                 ean=prod["ean"] or product_ean,

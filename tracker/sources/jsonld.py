@@ -16,13 +16,14 @@ from bs4 import BeautifulSoup
 
 log = logging.getLogger(__name__)
 
-# schema.org availability-Werte, die "kaufbar" bedeuten.
+# schema.org availability-Werte, die ONLINE bestellbar bedeuten.
+# WICHTIG: "instoreonly" zählt bewusst NICHT – das ist nur Marktverfügbarkeit
+# (z.B. OBI meldete InStoreOnly, war online aber nicht bestellbar = Pseudo).
 _IN_STOCK_TOKENS = {
     "instock",
     "in_stock",
     "limitedavailability",
     "onlineonly",
-    "instoreonly",
     "presale",
 }
 

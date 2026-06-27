@@ -17,6 +17,7 @@ import logging
 from ..config import Config, Store
 from ..models import CHANNEL_ONLINE, CHANNEL_STORE, CONDITION_NEW, Offer
 from .base import browser_headers, fetch_html_via_browser, http_get, http_get_json
+from .buyability import assess_buyability
 from .jsonld import extract_products
 
 log = logging.getLogger(__name__)
@@ -46,13 +47,18 @@ def _online_offers(cfg: Config, chain: str, url: str) -> list[Offer]:
     for prod in extract_products(html):
         if prod["price"] is None:
             continue
+        buyable, signals = assess_buyability(html, jsonld_in_stock=prod["in_stock"])
+        log.info(
+            "%s online: availability=%s -> bestellbar=%s %s",
+            chain, prod.get("availability_raw"), buyable, signals,
+        )
         offers.append(
             Offer(
                 source=chain,
                 title=prod["title"] or cfg.product.name,
                 price=prod["price"],
                 url=url,
-                in_stock=prod["in_stock"],
+                in_stock=buyable,
                 condition=CONDITION_NEW,
                 channel=CHANNEL_ONLINE,
                 ean=prod["ean"] or product_ean,
