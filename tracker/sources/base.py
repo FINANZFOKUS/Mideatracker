@@ -86,17 +86,51 @@ def http_get_json(url: str, **kwargs) -> dict | list | None:
         return None
 
 
+# JS-Init zum Verschleiern typischer Headless-/Automations-Merkmale.
+_STEALTH_INIT = """
+Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+Object.defineProperty(navigator, 'languages', {get: () => ['de-DE','de','en-US','en']});
+Object.defineProperty(navigator, 'plugins', {get: () => [1,2,3,4,5]});
+window.chrome = window.chrome || {runtime: {}};
+const _q = navigator.permissions && navigator.permissions.query;
+if (_q) { navigator.permissions.query = (p) => (
+  p && p.name === 'notifications'
+    ? Promise.resolve({state: Notification.permission})
+    : _q(p)
+); }
+"""
+
+# Marker einer Bot-Wall / Challenge-Seite (dann nachladen statt aufgeben).
+_CHALLENGE_MARKERS = (
+    "just a moment",
+    "attention required",
+    "/cdn-cgi/",
+    "captcha",
+    "are you a human",
+    "enable javascript and cookies",
+    "verifying you are human",
+)
+
+
+def _looks_like_challenge(html: str | None) -> bool:
+    if not html or len(html) < 12000:
+        return True
+    low = html.lower()
+    return any(m in low for m in _CHALLENGE_MARKERS)
+
+
 def fetch_html_via_browser(
     url: str,
     *,
     wait_selector: str | None = None,
     timeout_ms: int = BROWSER_GOTO_MS,
+    stealth: bool = True,
 ) -> str | None:
     """Fallback für bot-feindliche Seiten: echte Browser-Session via Playwright.
 
-    Nutzt – falls vorhanden – den in CI vorinstallierten Chromium. Schlägt der
-    Import oder Start fehl, wird None zurückgegeben (Adapter überspringt dann).
-    Die Timeouts sind knapp gehalten, damit der Gesamtlauf zügig bleibt.
+    Mit ``stealth`` (Default) werden gängige Automations-Merkmale verschleiert
+    und JS-Challenge-Seiten kurz nachgeladen, um Bot-Walls (Cloudflare/Akamai)
+    zu überwinden. Schlägt Import/Start fehl, wird None zurückgegeben.
     """
     try:
         from playwright.sync_api import sync_playwright
@@ -104,16 +138,32 @@ def fetch_html_via_browser(
         log.info("Playwright nicht installiert – Browser-Fallback für %s übersprungen.", url)
         return None
 
+    ua = random.choice(_USER_AGENTS)
     try:
         with sync_playwright() as pw:
             browser = pw.chromium.launch(
                 headless=True,
-                args=["--no-sandbox", "--disable-dev-shm-usage"],
+                args=[
+                    "--no-sandbox",
+                    "--disable-dev-shm-usage",
+                    "--disable-blink-features=AutomationControlled",
+                ],
             )
             ctx = browser.new_context(
-                user_agent=random.choice(_USER_AGENTS),
+                user_agent=ua,
                 locale="de-DE",
+                timezone_id="Europe/Berlin",
+                viewport={"width": 1366, "height": 768},
+                extra_http_headers={
+                    "Accept-Language": "de-DE,de;q=0.9,en;q=0.6",
+                    "sec-ch-ua": '"Chromium";v="124", "Not:A-Brand";v="99"',
+                    "sec-ch-ua-mobile": "?0",
+                    "sec-ch-ua-platform": '"Windows"',
+                },
             )
+            if stealth:
+                ctx.add_init_script(_STEALTH_INIT)
+
             page = ctx.new_page()
             page.set_default_timeout(BROWSER_SELECTOR_MS)
             try:
@@ -125,7 +175,21 @@ def fetch_html_via_browser(
                     page.wait_for_selector(wait_selector, timeout=BROWSER_SELECTOR_MS)
                 except Exception:  # noqa: BLE001 - Selektor optional
                     pass
+
             html = page.content()
+
+            # Challenge erkannt → kurz auf JS-Auflösung warten und erneut lesen.
+            if stealth and _looks_like_challenge(html):
+                for _ in range(2):
+                    try:
+                        page.wait_for_load_state("networkidle", timeout=8000)
+                    except Exception:  # noqa: BLE001
+                        pass
+                    page.wait_for_timeout(2500)
+                    html = page.content()
+                    if not _looks_like_challenge(html):
+                        break
+
             browser.close()
             return html
     except Exception as exc:  # noqa: BLE001 - Browser-Fallback ist best effort
