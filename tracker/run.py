@@ -13,7 +13,7 @@ import sys
 
 from .config import Config, Secrets, load_config
 from .matching import is_buyable
-from .models import Offer
+from .models import CHANNEL_ONLINE, CONDITION_NEW, Offer
 from .notify import format_offers, send_telegram
 from .sources import get_source
 from .state import diff_new, load_seen, save_seen
@@ -76,9 +76,33 @@ def run(dry_run: bool = False) -> int:
     return 0
 
 
+def run_demo() -> int:
+    """Schickt einen einmaligen Beispiel-Alarm im echten Format (Funktionstest)."""
+    cfg = load_config()
+    secrets = Secrets.from_env()
+    demo = Offer(
+        source="hornbach",
+        title=f"{cfg.product.name} (BEISPIEL/Test)",
+        price=699.0,
+        url="https://www.hornbach.de/p/klimasplitgeraet-midea-portasplit-12-000-btu-105-m-weiss/12356554/",
+        in_stock=True,
+        condition=CONDITION_NEW,
+        channel=CHANNEL_ONLINE,
+        ean=cfg.product.eans[0] if cfg.product.eans else None,
+        merchant="Hornbach (Test-Alarm)",
+    )
+    message = "🔔 <b>TEST-ALARM</b> – so sieht eine echte Benachrichtigung aus:\n\n" + format_offers(
+        cfg.product.name, [demo]
+    )
+    ok = send_telegram(message, secrets)
+    log.info("Test-Alarm gesendet." if ok else "Test-Alarm fehlgeschlagen (Secrets prüfen).")
+    return 0 if ok else 1
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Midea PortaSplit Verfügbarkeits-Check")
     parser.add_argument("--dry-run", action="store_true", help="Nur loggen, nichts senden/schreiben")
+    parser.add_argument("--demo", action="store_true", help="Einmaligen Beispiel-Alarm an Telegram senden")
     parser.add_argument("-v", "--verbose", action="store_true", help="Debug-Logging")
     args = parser.parse_args(argv)
 
@@ -87,6 +111,8 @@ def main(argv: list[str] | None = None) -> int:
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
         datefmt="%H:%M:%S",
     )
+    if args.demo:
+        return run_demo()
     return run(dry_run=args.dry_run)
 
 
