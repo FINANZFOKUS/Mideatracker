@@ -60,3 +60,10 @@ sources:
   bauhaus: true
   hornbach: true
   amazon: true
+
+# Tägliche "lebt noch"-Statusmeldung via Telegram (günstigster Preis je Gerät,
+# Quellen mit Daten). Zusätzlich ein Sofort-Alarm bei Totalausfall (keine
+# einzige Quelle lieferte Daten). Beides ist auf max. 1x/Tag entprellt.
+heartbeat:
+  enabled: true
+  hour_utc: 6  # erste Meldung am/nach dieser UTC-Stunde (6 ≈ 8 Uhr MESZ)

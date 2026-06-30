@@ -89,3 +89,16 @@ def test_loads_legacy_single_product_format(tmp_path):
 def test_url_for_missing_source_is_empty(tmp_path):
     cfg = load_config(_write(tmp_path, NEW_FORMAT), tmp_path / "stores.yaml")
     assert cfg.products[1].url_for("amazon") == ""
+
+
+def test_heartbeat_defaults_when_absent(tmp_path):
+    cfg = load_config(_write(tmp_path, NEW_FORMAT), tmp_path / "stores.yaml")
+    assert cfg.heartbeat_enabled is True
+    assert cfg.heartbeat_hour_utc == 6
+
+
+def test_heartbeat_override(tmp_path):
+    text = NEW_FORMAT + "\nheartbeat:\n  enabled: false\n  hour_utc: 9\n"
+    cfg = load_config(_write(tmp_path, text), tmp_path / "stores.yaml")
+    assert cfg.heartbeat_enabled is False
+    assert cfg.heartbeat_hour_utc == 9

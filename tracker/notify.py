@@ -79,6 +79,41 @@ def format_offers(offers: list[Offer]) -> str:
     return "\n".join(lines).rstrip()
 
 
+def format_heartbeat(summary, now) -> str:
+    """Tägliche "lebt noch"-Statusmeldung mit günstigstem Preis je Gerät.
+
+    ``summary`` ist ein run.RunSummary, ``now`` ein datetime (für den Zeitstempel).
+    Bewusst lose typisiert, um einen Importzyklus run<->notify zu vermeiden.
+    """
+    ts = now.strftime("%d.%m.%Y %H:%M UTC")
+    lines = [
+        f"💓 <b>Tracker aktiv</b> – {ts}",
+        f"Quellen mit Daten: {summary.sources_with_data}/{summary.attempts}",
+        f"Bestellbar im Budget: {summary.buyable_count}",
+    ]
+    if summary.best_by_product:
+        lines.append("")
+        lines.append("Günstigster Preis je Gerät:")
+        for name, (price, merchant) in sorted(summary.best_by_product.items()):
+            lines.append(
+                f"• {html.escape(name)}: <b>{price:.2f} €</b> ({html.escape(merchant)})"
+            )
+    else:
+        lines.append("")
+        lines.append("Aktuell kein Preis für die beobachteten Geräte gefunden.")
+    return "\n".join(lines)
+
+
+def format_outage(summary) -> str:
+    """Alarm, wenn KEINE Quelle Daten lieferte (wahrscheinlich alles geblockt)."""
+    return (
+        "⚠️ <b>Tracker: Totalausfall</b>\n\n"
+        f"Keine einzige Quelle lieferte Daten ({summary.attempts} Abrufversuche). "
+        "Vermutlich sind die Shops gerade alle geblockt oder es gibt ein Problem. "
+        "Solange dieser Zustand anhält, kann eine echte Verfügbarkeit übersehen werden."
+    )
+
+
 def _self_test() -> int:
     """`python -m tracker.notify --test` schickt eine Testnachricht."""
     logging.basicConfig(level=logging.INFO)

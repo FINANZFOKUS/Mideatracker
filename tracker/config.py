@@ -53,6 +53,9 @@ class Config:
     location: Location
     sources: dict[str, bool]
     stores: dict[str, list[Store]] = field(default_factory=dict)
+    # Tägliche "lebt noch"-Meldung + Totalausfall-Alarm via Telegram.
+    heartbeat_enabled: bool = True
+    heartbeat_hour_utc: int = 6  # erste Meldung am/nach dieser UTC-Stunde
 
     @property
     def product(self) -> Product:
@@ -143,9 +146,12 @@ def load_config(config_path: Path = CONFIG_PATH, stores_path: Path = STORES_PATH
                 for e in (entries or [])
             ]
 
+    hb = data.get("heartbeat") or {}
     return Config(
         products=products,
         location=location,
         sources=dict(data.get("sources", {})),
         stores=stores,
+        heartbeat_enabled=bool(hb.get("enabled", True)),
+        heartbeat_hour_utc=int(hb.get("hour_utc", 6)),
     )

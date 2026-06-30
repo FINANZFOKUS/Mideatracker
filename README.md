@@ -52,6 +52,20 @@ HTTP-200-Bot-Walls. Damit ist Hornbach erreichbar und OBI/MediaMarkt/Saturn robu
 Diagnose jederzeit per Workflow **„Diagnose Shops"** (`inspect.yml`), Funktionstest
 der Push per **„Test-Alarm senden"** (`test-notify.yml`).
 
+### Heartbeat & Totalausfall-Alarm
+Damit kein stiller Ausfall unbemerkt bleibt, schickt der Tracker:
+- **1×/Tag** eine **„lebt noch"-Statusmeldung** (günstigster Preis je Gerät,
+  „Quellen mit Daten X/Y", Anzahl bestellbarer Treffer) – ab `heartbeat.hour_utc`.
+- einen **Sofort-Alarm bei Totalausfall**, wenn in einem Lauf **keine einzige**
+  Quelle Daten liefert (z.B. alle geblockt) – sonst entsteht falsche Sicherheit.
+
+Beides ist auf max. 1×/Tag entprellt (Datumsmarken in `state.json`) und in
+`config.yaml` unter `heartbeat:` ein-/ausschaltbar.
+
+### Tests / CI
+Die Test-Suite läuft netzwerkfrei (`python -m pytest -q`) und bei jedem Push/PR
+automatisch über den Workflow **CI (Tests)** (`.github/workflows/ci.yml`).
+
 ## Einrichtung (einmalig)
 
 ### 1. Telegram-Bot anlegen
