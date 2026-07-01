@@ -1,4 +1,4 @@
-# Filialen im 25-km-Umkreis von 74321 Bietigheim-Bissingen.
+# Filialen im 25-km-Umkreis von 40213 Düsseldorf.
 #
 # Je Eintrag:
 #   id            ketteninterne Store-ID für die Bestandsabfrage. DARF leer
@@ -17,25 +17,21 @@
 # (https://www.mediamarkt.de/de/store/store-finder), Filiale wählen, die Zahl am
 # Ende der Store-URL (…/store/<NAME>-<ID>) ist die ID. Diese bei `id:` eintragen.
 # Die Koordinaten sind grobe Filialstandorte (für die Distanzberechnung) – bei
-# Bedarf verfeinern. Alle vier MediaMärkte liegen < 25 km (ca. 6–21 km).
+# Bedarf verfeinern. Alle drei MediaMärkte liegen < 25 km (ca. 2–9 km).
 
 mediamarkt:
-  - id: "450"         # mediamarkt.de/de/store/ludwigsburg-450  (~6 km)
-    name: "Ludwigsburg"
-    lat: 48.9080
-    lon: 9.1720
-  - id: "402"         # …/store/stuttgart-feuerbach-402  (~16 km)
-    name: "Stuttgart-Feuerbach"
-    lat: 48.8090
-    lon: 9.1570
-  - id: "31"          # …/store/leonberg-31  (~19 km)
-    name: "Leonberg"
-    lat: 48.8010
-    lon: 9.0180
-  - id: "527"         # …/store/heilbronn-527  (~21 km)
-    name: "Heilbronn"
-    lat: 49.1370
-    lon: 9.2200
+  - id: "250"         # mediamarkt.de/de/store/duesseldorf-metrostrasse-250  (~2 km)
+    name: "Düsseldorf-Metrostraße"
+    lat: 51.2306
+    lon: 6.8039
+  - id: "377"         # …/store/duesseldorf-bilk-377  (Arcaden, ~3 km)
+    name: "Düsseldorf-Bilk Arcaden"
+    lat: 51.2085
+    lon: 6.7830
+  - id: "376"         # …/store/neuss-376  (~9 km)
+    name: "Neuss"
+    lat: 51.1980
+    lon: 6.6850
 
 # Für Saturn-Filialen analog die ID aus saturn.de/de/store/<name>-<ID> eintragen.
 saturn: []
