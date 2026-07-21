@@ -18,7 +18,7 @@ products:
     # ("Midea Comfee PortaSplit"), daher KEIN comfee-Ausschluss. Der EAN-Abgleich
     # ist der starke Anker; ohne EAN greift der Titel ("portasplit").
     title_must_exclude: []
-    max_price: 1000.0  # EUR – nur Angebote darunter lösen aus
+    max_price: 850.0  # EUR – nur Angebote darunter lösen aus
     allow_used: true  # Amazon Warehouse / gebrauchte Artikel erlauben
     # Pro Quelle die direkte Produkt-URL. Leere/fehlende Werte = übersprungen.
     urls:
